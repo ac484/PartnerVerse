@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FC, useEffect, useCallback } from 'react';
+import { useState, type FC, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { sampleWorkflow } from '@/lib/data';
 import type { Workflow, WorkflowNode, WorkflowEdge, Partner } from '@/lib/types';
-import { ArrowRight,GitBranch, CheckCircle, XCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Trash2, Pencil, Link2 } from 'lucide-react';
+import { GitBranch, CheckCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Pencil } from 'lucide-react';
 import { OptimizationAssistant } from './optimization-assistant';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
@@ -25,15 +24,16 @@ const nodeIcons = {
   decision: <GitBranch className="h-5 w-5 mr-2 text-yellow-500" />,
 };
 
-const Node: FC<{ node: WorkflowNode; onSelect: (node: WorkflowNode) => void; }> = ({ node, onSelect }) => (
+const Node: FC<{ node: WorkflowNode; onDoubleClick: (node: WorkflowNode) => void; onDragStart: (e: React.MouseEvent, nodeId: string) => void; }> = ({ node, onDoubleClick, onDragStart }) => (
   <div
-    className="absolute bg-card border rounded-lg shadow-md p-3 flex items-center group cursor-pointer hover:shadow-xl hover:border-primary transition-all"
+    className="absolute bg-card border rounded-lg shadow-md p-3 flex items-center group cursor-grab active:cursor-grabbing hover:shadow-xl hover:border-primary transition-all"
     style={{ left: node.position.x, top: node.position.y, width: 200 }}
-    onClick={() => onSelect(node)}
+    onDoubleClick={() => onDoubleClick(node)}
+    onMouseDown={(e) => onDragStart(e, node.id)}
   >
     {nodeIcons[node.type]}
-    <span className="font-medium flex-1">{node.label}</span>
-    <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    <span className="font-medium flex-1 pointer-events-none">{node.label}</span>
+    <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
   </div>
 );
 
@@ -82,6 +82,9 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
     const [nodeToEdit, setNodeToEdit] = useState<WorkflowNode | null>(null);
     const [isNodeFormOpen, setIsNodeFormOpen] = useState(false);
     const { toast } = useToast();
+    
+    const dragInfo = useRef<{ nodeId: string; offsetX: number; offsetY: number } | null>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
 
     const fetchWorkflows = useCallback(async () => {
       setIsLoading(true);
@@ -117,7 +120,6 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
             const { id, ...workflowData } = selectedWorkflow;
             const workflowRef = doc(db, 'workflows', id);
             await setDoc(workflowRef, workflowData, { merge: true });
-            // Also update local state to reflect the change
             setWorkflows(workflows.map(w => w.id === id ? selectedWorkflow : w));
             toast({ title: "Workflow Saved", description: `Workflow "${selectedWorkflow.name}" has been updated.` });
         } catch (error) {
@@ -165,7 +167,6 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
                 target: newEdgeTarget,
                 label: newEdgeLabel
             };
-            // Avoid adding duplicate edges
             if (!updatedEdges.some(e => e.id === newEdge.id)) {
                 updatedEdges = [...updatedEdges, newEdge];
             }
@@ -179,7 +180,38 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
         setIsNodeFormOpen(false);
         setNodeToEdit(null);
     }
+    
+    const handleDragStart = (e: React.MouseEvent, nodeId: string) => {
+        if (!selectedWorkflow || !canvasRef.current) return;
+        const node = selectedWorkflow.nodes.find(n => n.id === nodeId);
+        if (!node) return;
 
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        dragInfo.current = {
+            nodeId,
+            offsetX: e.clientX - canvasRect.left - node.position.x,
+            offsetY: e.clientY - canvasRect.top - node.position.y,
+        };
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!dragInfo.current || !selectedWorkflow || !canvasRef.current) return;
+        
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const newX = e.clientX - canvasRect.left - dragInfo.current.offsetX;
+        const newY = e.clientY - canvasRect.top - dragInfo.current.offsetY;
+
+        const updatedNodes = selectedWorkflow.nodes.map(n => 
+            n.id === dragInfo.current?.nodeId ? { ...n, position: { x: newX, y: newY } } : n
+        );
+        
+        setSelectedWorkflow({ ...selectedWorkflow, nodes: updatedNodes });
+    };
+
+    const handleMouseUp = () => {
+        dragInfo.current = null;
+    };
+    
     const nodeTypes = [
         { type: 'task', label: 'Task', icon: <CheckCircle className="h-5 w-5 mr-2 text-blue-500" /> },
         { type: 'decision', label: 'Decision', icon: <GitBranch className="h-5 w-5 mr-2 text-yellow-500" /> },
@@ -288,15 +320,21 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
                                  </Button>
                                </div>
                             )}
-                            <CardDescription>Visual representation of the workflow process. Click a node to edit it.</CardDescription>
+                            <CardDescription>Visual representation of the workflow process. Double-click a node to edit it.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                        <div className="relative w-full h-[600px] bg-muted/30 rounded-lg border-2 border-dashed overflow-auto">
+                        <div 
+                            ref={canvasRef}
+                            className="relative w-full h-[600px] bg-muted/30 rounded-lg border-2 border-dashed overflow-auto"
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                        >
                             {isLoading ? <div className='flex items-center justify-center h-full'><p>Loading workflows...</p></div> : (
                                <>
                                 {selectedWorkflow ? (
                                     <>
-                                    <svg width="1200" height="800" className="absolute top-0 left-0">
+                                    <svg width="1200" height="800" className="absolute top-0 left-0 pointer-events-none">
                                         <defs>
                                         <marker
                                             id="arrowhead"
@@ -311,7 +349,7 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
                                         </defs>
                                         {selectedWorkflow.edges.map(edge => <Edge key={edge.id} edge={edge} nodes={selectedWorkflow.nodes} />)}
                                     </svg>
-                                    {selectedWorkflow.nodes.map(node => <Node key={node.id} node={node} onSelect={handleSelectNodeToEdit}/>)}
+                                    {selectedWorkflow.nodes.map(node => <Node key={node.id} node={node} onDoubleClick={handleSelectNodeToEdit} onDragStart={handleDragStart} />)}
                                     </>
                                 ) : (
                                     <div className='flex items-center justify-center h-full'>
