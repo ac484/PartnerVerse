@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sampleWorkflow } from '@/lib/data';
 import type { WorkflowNode, WorkflowEdge } from '@/lib/types';
-import { ArrowRight,GitBranch, CheckCircle, XCircle, PlayCircle, StopCircle, Bot } from 'lucide-react';
+import { ArrowRight,GitBranch, CheckCircle, XCircle, PlayCircle, StopCircle, Bot, Workflow } from 'lucide-react';
 import { OptimizationAssistant } from './optimization-assistant';
 
 const nodeIcons = {
