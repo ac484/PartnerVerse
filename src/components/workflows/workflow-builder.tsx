@@ -109,7 +109,8 @@ export const WorkflowBuilder: FC = () => {
     
     const handleUpdateWorkflowDetails = (key: 'name' | 'partnerId', value: string) => {
         if (!selectedWorkflow) return;
-        setSelectedWorkflow({ ...selectedWorkflow, [key]: value });
+        const finalValue = key === 'partnerId' && value === 'none' ? undefined : value;
+        setSelectedWorkflow({ ...selectedWorkflow, [key]: finalValue });
     }
 
     const handleSaveWorkflow = async () => {
@@ -249,7 +250,7 @@ export const WorkflowBuilder: FC = () => {
                             <div className="space-y-2">
                                 <Label htmlFor="assign-partner">Assign to Partner</Label>
                                 <Select 
-                                    value={selectedWorkflow?.partnerId || ''} 
+                                    value={selectedWorkflow?.partnerId || 'none'} 
                                     onValueChange={(value) => handleUpdateWorkflowDetails('partnerId', value)}
                                     disabled={!selectedWorkflow || isLoading}
                                 >
@@ -257,7 +258,7 @@ export const WorkflowBuilder: FC = () => {
                                         <SelectValue placeholder="Select a partner" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        <SelectItem value="none">None</SelectItem>
                                         {partners.map(p => <SelectItem key={p.id} value={p.id!}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
