@@ -259,7 +259,7 @@ export const WorkflowBuilder: FC = () => {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">None</SelectItem>
-                                        {partners.map(p => <SelectItem key={p.id} value={p.id!}>{p.name}</SelectItem>)}
+                                        {partners.filter(p => p.id).map(p => <SelectItem key={p.id} value={p.id!}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
