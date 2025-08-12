@@ -10,12 +10,14 @@ import { PartnerForm } from '@/components/partners/partner-form';
 import type { Partner } from '@/lib/types';
 import { partners as initialPartners } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
+import { Dashboard } from '@/components/dashboard/dashboard';
+import { AppSidebar } from '@/components/layout/sidebar';
 
-export type View = 'partners' | 'workflows';
+export type View = 'dashboard' | 'partners' | 'workflows';
 export type Role = 'Admin' | 'Manager' | 'Viewer';
 
 const HomePage: FC = () => {
-  const [view, setView] = useState<View>('partners');
+  const [view, setView] = useState<View>('dashboard');
   const [partners, setPartners] = useState<Partner[]>(initialPartners);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -57,12 +59,19 @@ const HomePage: FC = () => {
     setPartnerToEdit(null);
   };
 
+  const handleNavigate = (newView: View) => {
+    setView(newView);
+    setSelectedPartner(null);
+  }
+
   const renderView = () => {
     if (selectedPartner) {
         return <PartnerProfile partner={selectedPartner} onBack={handleBackToList} userRole={userRole} onEdit={handleEditPartner} />;
     }
     
     switch (view) {
+      case 'dashboard':
+        return <Dashboard partners={partners} onViewPartners={() => handleNavigate('partners')} />;
       case 'workflows':
         return <WorkflowBuilder />;
       case 'partners':
@@ -72,20 +81,19 @@ const HomePage: FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header 
-        currentView={view} 
-        onNavigate={setView} 
-        userRole={userRole}
-        onRoleChange={setUserRole}
-        onAddPartner={handleAddPartner}
-        isPartnerSelected={!!selectedPartner}
-        onBack={handleBackToList}
-      />
-      <main className="flex-1 p-4 sm:p-6 md:p-8">
-        {renderView()}
-      </main>
-      <PartnerForm 
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <AppSidebar currentView={view} onNavigate={handleNavigate} />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <Header
+          userRole={userRole}
+          onRoleChange={setUserRole}
+          onAddPartner={handleAddPartner}
+        />
+        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+            {renderView()}
+        </main>
+      </div>
+      <PartnerForm
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSave={handleSavePartner}
