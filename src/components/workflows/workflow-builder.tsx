@@ -71,26 +71,24 @@ const Edge: FC<{ edge: WorkflowEdge; nodes: WorkflowNode[] }> = ({ edge, nodes }
 };
 
 
-export const WorkflowBuilder: FC = () => {
+interface WorkflowBuilderProps {
+  partners: Partner[];
+}
+
+export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
-    const [partners, setPartners] = useState<Partner[]>([]);
     const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [nodeToEdit, setNodeToEdit] = useState<WorkflowNode | null>(null);
     const [isNodeFormOpen, setIsNodeFormOpen] = useState(false);
     const { toast } = useToast();
 
-    const fetchWorkflowsAndPartners = useCallback(async () => {
+    const fetchWorkflows = useCallback(async () => {
       setIsLoading(true);
       const workflowsCollection = collection(db, 'workflows');
       const workflowSnapshot = await getDocs(workflowsCollection);
       const workflowList = workflowSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workflow[];
       setWorkflows(workflowList);
-
-      const partnersCollection = collection(db, 'partners');
-      const partnerSnapshot = await getDocs(partnersCollection);
-      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Partner[];
-      setPartners(partnerList);
 
       if(workflowList.length > 0) {
         setSelectedWorkflow(workflowList[0]);
@@ -99,8 +97,8 @@ export const WorkflowBuilder: FC = () => {
     }, []);
 
     useEffect(() => {
-      fetchWorkflowsAndPartners();
-    }, [fetchWorkflowsAndPartners]);
+      fetchWorkflows();
+    }, [fetchWorkflows]);
     
     const handleSelectWorkflow = (workflowId: string) => {
         const workflow = workflows.find(w => w.id === workflowId);
@@ -272,7 +270,7 @@ export const WorkflowBuilder: FC = () => {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {nodeTypes.map(node => (
-                                <Button key={node.type} variant="outline" className="w-full justify-start" onClick={() => handleAddNode(node.type)}>
+                                <Button key={node.type} variant="outline" className="w-full justify-start" onClick={() => handleAddNode(node.type as 'task' | 'decision')}>
                                     {node.icon} {node.label}
                                 </Button>
                             ))}

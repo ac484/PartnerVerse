@@ -116,7 +116,7 @@ const HomePage: FC = () => {
       case 'dashboard':
         return <Dashboard partners={partners} onViewPartners={() => handleNavigate('partners')} />;
       case 'workflows':
-        return <WorkflowBuilder />;
+        return <WorkflowBuilder partners={partners} />;
       case 'partners':
       default:
         return <PartnerList partners={partners} onSelectPartner={handleSelectPartner} userRole={userRole} onAddPartner={handleAddPartner} />;
