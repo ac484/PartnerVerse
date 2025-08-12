@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sampleWorkflow } from '@/lib/data';
-import type { Workflow, WorkflowNode, WorkflowEdge } from '@/lib/types';
-import { ArrowRight,GitBranch, CheckCircle, XCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Trash2, Pencil } from 'lucide-react';
+import type { Workflow, WorkflowNode, WorkflowEdge, Partner } from '@/lib/types';
+import { ArrowRight,GitBranch, CheckCircle, XCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Trash2, Pencil, Link2 } from 'lucide-react';
 import { OptimizationAssistant } from './optimization-assistant';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '../ui/separator';
 
 const nodeIcons = {
   start: <PlayCircle className="h-5 w-5 mr-2 text-green-500" />,
@@ -72,18 +73,25 @@ const Edge: FC<{ edge: WorkflowEdge; nodes: WorkflowNode[] }> = ({ edge, nodes }
 
 export const WorkflowBuilder: FC = () => {
     const [workflows, setWorkflows] = useState<Workflow[]>([]);
+    const [partners, setPartners] = useState<Partner[]>([]);
     const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [nodeToEdit, setNodeToEdit] = useState<WorkflowNode | null>(null);
     const [isNodeFormOpen, setIsNodeFormOpen] = useState(false);
     const { toast } = useToast();
 
-    const fetchWorkflows = useCallback(async () => {
+    const fetchWorkflowsAndPartners = useCallback(async () => {
       setIsLoading(true);
       const workflowsCollection = collection(db, 'workflows');
       const workflowSnapshot = await getDocs(workflowsCollection);
       const workflowList = workflowSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Workflow[];
       setWorkflows(workflowList);
+
+      const partnersCollection = collection(db, 'partners');
+      const partnerSnapshot = await getDocs(partnersCollection);
+      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Partner[];
+      setPartners(partnerList);
+
       if(workflowList.length > 0) {
         setSelectedWorkflow(workflowList[0]);
       }
@@ -91,19 +99,27 @@ export const WorkflowBuilder: FC = () => {
     }, []);
 
     useEffect(() => {
-      fetchWorkflows();
-    }, [fetchWorkflows]);
+      fetchWorkflowsAndPartners();
+    }, [fetchWorkflowsAndPartners]);
     
     const handleSelectWorkflow = (workflowId: string) => {
         const workflow = workflows.find(w => w.id === workflowId);
         setSelectedWorkflow(workflow || null);
     }
+    
+    const handleUpdateWorkflowDetails = (key: 'name' | 'partnerId', value: string) => {
+        if (!selectedWorkflow) return;
+        setSelectedWorkflow({ ...selectedWorkflow, [key]: value });
+    }
 
     const handleSaveWorkflow = async () => {
         if(!selectedWorkflow || !selectedWorkflow.id) return;
         try {
-            const workflowRef = doc(db, 'workflows', selectedWorkflow.id);
-            await setDoc(workflowRef, {name: selectedWorkflow.name, nodes: selectedWorkflow.nodes, edges: selectedWorkflow.edges}, { merge: true });
+            const { id, ...workflowData } = selectedWorkflow;
+            const workflowRef = doc(db, 'workflows', id);
+            await setDoc(workflowRef, workflowData, { merge: true });
+            // Also update local state to reflect the change
+            setWorkflows(workflows.map(w => w.id === id ? selectedWorkflow : w));
             toast({ title: "Workflow Saved", description: `Workflow "${selectedWorkflow.name}" has been updated.` });
         } catch (error) {
             console.error("Error saving workflow: ", error);
@@ -139,13 +155,28 @@ export const WorkflowBuilder: FC = () => {
         setIsNodeFormOpen(true);
     }
 
-    const handleUpdateNodeLabel = (newLabel: string) => {
+    const handleUpdateNodeAndEdges = (newLabel: string, newEdgeTarget: string, newEdgeLabel: string) => {
         if (!selectedWorkflow || !nodeToEdit) return;
+
+        let updatedEdges = selectedWorkflow.edges;
+        if (newEdgeTarget) {
+            const newEdge: WorkflowEdge = {
+                id: `e-${nodeToEdit.id}-${newEdgeTarget}`,
+                source: nodeToEdit.id,
+                target: newEdgeTarget,
+                label: newEdgeLabel
+            };
+            // Avoid adding duplicate edges
+            if (!updatedEdges.some(e => e.id === newEdge.id)) {
+                updatedEdges = [...updatedEdges, newEdge];
+            }
+        }
 
         const updatedNodes = selectedWorkflow.nodes.map(n => 
             n.id === nodeToEdit.id ? { ...n, label: newLabel } : n
         );
-        setSelectedWorkflow({ ...selectedWorkflow, nodes: updatedNodes });
+        
+        setSelectedWorkflow({ ...selectedWorkflow, nodes: updatedNodes, edges: updatedEdges });
         setIsNodeFormOpen(false);
         setNodeToEdit(null);
     }
@@ -155,13 +186,13 @@ export const WorkflowBuilder: FC = () => {
         { type: 'decision', label: 'Decision', icon: <GitBranch className="h-5 w-5 mr-2 text-yellow-500" /> },
     ];
 
-    const handleAddNode = () => {
+    const handleAddNode = (type: 'task' | 'decision') => {
       if (!selectedWorkflow) return;
       const newNodeId = `n${selectedWorkflow.nodes.length + 1}`;
       const newNode: WorkflowNode = {
         id: newNodeId,
-        type: 'task',
-        label: 'New Task',
+        type: type,
+        label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
         position: { x: 100, y: 100 + selectedWorkflow.nodes.length * 20 }
       };
       const updatedNodes = [...selectedWorkflow.nodes, newNode];
@@ -200,6 +231,39 @@ export const WorkflowBuilder: FC = () => {
                             <Button className='w-full' onClick={handleNewWorkflow} disabled={isLoading}><PlusCircle className='mr-2 h-4 w-4' /> New Workflow</Button>
                         </CardContent>
                     </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Details</CardTitle>
+                             <CardDescription>Assign and manage this workflow.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="workflow-name">Workflow Name</Label>
+                                <Input 
+                                    id="workflow-name" 
+                                    value={selectedWorkflow?.name || ''}
+                                    onChange={(e) => handleUpdateWorkflowDetails('name', e.target.value)}
+                                    disabled={!selectedWorkflow}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="assign-partner">Assign to Partner</Label>
+                                <Select 
+                                    value={selectedWorkflow?.partnerId || ''} 
+                                    onValueChange={(value) => handleUpdateWorkflowDetails('partnerId', value)}
+                                    disabled={!selectedWorkflow || isLoading}
+                                >
+                                    <SelectTrigger id="assign-partner">
+                                        <SelectValue placeholder="Select a partner" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">None</SelectItem>
+                                        {partners.map(p => <SelectItem key={p.id} value={p.id!}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </CardContent>
+                    </Card>
                     <Card>
                         <CardHeader>
                             <CardTitle>Controls</CardTitle>
@@ -207,7 +271,7 @@ export const WorkflowBuilder: FC = () => {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {nodeTypes.map(node => (
-                                <Button key={node.type} variant="outline" className="w-full justify-start" onClick={handleAddNode}>
+                                <Button key={node.type} variant="outline" className="w-full justify-start" onClick={() => handleAddNode(node.type)}>
                                     {node.icon} {node.label}
                                 </Button>
                             ))}
@@ -225,7 +289,7 @@ export const WorkflowBuilder: FC = () => {
                                  </Button>
                                </div>
                             )}
-                            <CardDescription>Visual representation of the workflow process.</CardDescription>
+                            <CardDescription>Visual representation of the workflow process. Click a node to edit it.</CardDescription>
                         </CardHeader>
                         <CardContent>
                         <div className="relative w-full h-[600px] bg-muted/30 rounded-lg border-2 border-dashed overflow-auto">
@@ -276,18 +340,44 @@ export const WorkflowBuilder: FC = () => {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Edit Node</DialogTitle>
-                <DialogDescription>Update the details for this workflow node.</DialogDescription>
+                <DialogDescription>Update the details for this workflow node and create new connections.</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const label = formData.get('label') as string;
-                handleUpdateNodeLabel(label);
+                const edgeTarget = formData.get('edge-target') as string;
+                const edgeLabel = formData.get('edge-label') as string;
+                handleUpdateNodeAndEdges(label, edgeTarget, edgeLabel);
             }}>
                 <div className='space-y-4 py-4'>
                     <div className='space-y-2'>
-                        <Label htmlFor="node-label">Label</Label>
+                        <Label htmlFor="node-label">Node Label</Label>
                         <Input id="node-label" name="label" defaultValue={nodeToEdit?.label} />
+                    </div>
+                     <Separator />
+                    <div className="space-y-2">
+                        <Label>Create New Connection (Edge)</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Create a link from this node (<span className="font-semibold text-primary">{nodeToEdit?.label}</span>) to another node.
+                        </p>
+                    </div>
+                     <div className='space-y-2'>
+                        <Label htmlFor="edge-target">Target Node</Label>
+                         <Select name="edge-target">
+                            <SelectTrigger id="edge-target">
+                                <SelectValue placeholder="Select target node" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {selectedWorkflow?.nodes.filter(n => n.id !== nodeToEdit?.id).map(n => (
+                                    <SelectItem key={n.id} value={n.id}>{n.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className='space-y-2'>
+                        <Label htmlFor="edge-label">Connection Label (Optional)</Label>
+                        <Input id="edge-label" name="edge-label" placeholder="e.g., 'Pass', 'Fail', 'Approved'"/>
                     </div>
                 </div>
                 <DialogFooter>

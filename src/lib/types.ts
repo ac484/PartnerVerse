@@ -74,4 +74,5 @@ export type Workflow = {
   name: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
+  partnerId?: string;
 };
