@@ -9,13 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Workflow, WorkflowNode, WorkflowEdge, Partner } from '@/lib/types';
-import { GitBranch, CheckCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Pencil } from 'lucide-react';
+import { GitBranch, CheckCircle, PlayCircle, StopCircle, Bot, Workflow as WorkflowIcon, PlusCircle, Save, Pencil, Trash2 } from 'lucide-react';
 import { OptimizationAssistant } from './optimization-assistant';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '../ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+
 
 const nodeIcons = {
   start: <PlayCircle className="h-5 w-5 mr-2 text-green-500" />,
@@ -230,6 +232,24 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
       setSelectedWorkflow({...selectedWorkflow, nodes: updatedNodes});
     }
 
+    const handleDeleteNode = () => {
+        if (!selectedWorkflow || !nodeToEdit) return;
+
+        const updatedNodes = selectedWorkflow.nodes.filter(n => n.id !== nodeToEdit.id);
+        const updatedEdges = selectedWorkflow.edges.filter(e => e.source !== nodeToEdit.id && e.target !== nodeToEdit.id);
+
+        setSelectedWorkflow({
+            ...selectedWorkflow,
+            nodes: updatedNodes,
+            edges: updatedEdges,
+        });
+
+        setIsNodeFormOpen(false);
+        setNodeToEdit(null);
+        toast({ title: "Node Deleted", description: `Node "${nodeToEdit.label}" has been removed.`});
+    }
+
+
   return (
     <div className="space-y-6">
        <div>
@@ -417,9 +437,32 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
                         <Input id="edge-label" name="edge-label" placeholder="e.g., 'Pass', 'Fail', 'Approved'"/>
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsNodeFormOpen(false)}>Cancel</Button>
-                    <Button type="submit">Save Changes</Button>
+                <DialogFooter className="justify-between">
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button type="button" variant="destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Node
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the node
+                                and any connections to it.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteNode}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsNodeFormOpen(false)}>Cancel</Button>
+                        <Button type="submit">Save Changes</Button>
+                    </div>
                 </DialogFooter>
             </form>
         </DialogContent>
@@ -427,3 +470,5 @@ export const WorkflowBuilder: FC<WorkflowBuilderProps> = ({ partners }) => {
     </div>
   );
 };
+
+    
