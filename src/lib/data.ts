@@ -5,7 +5,7 @@ export const partners: Partner[] = [
     id: 'p1',
     name: 'Innovate Inc.',
     logoUrl: 'https://placehold.co/100x100.png',
-    category: 'Technology',
+    category: 'Subcontractor',
     status: 'Active',
     overview: 'A leading provider of cloud-based solutions, Innovate Inc. specializes in scalable infrastructure and AI-driven analytics. They are a key partner for our enterprise-level projects.',
     website: 'innovate.com',
@@ -19,12 +19,21 @@ export const partners: Partner[] = [
       { id: 't2', date: '2023-11-12', amount: 25000, status: 'Pending', description: 'Project Alpha Kickoff' },
        { id: 't3', date: '2023-12-20', amount: 7500, status: 'Failed', description: 'Annual Subscription' },
     ],
+    performanceReviews: [
+        { id: 'pr1', date: '2023-09-15', rating: 5, notes: 'Excellent work on the foundation phase. Finished ahead of schedule.', reviewer: 'Admin' }
+    ],
+    complianceDocuments: [
+        { id: 'cd1', name: 'Liability Insurance', status: 'Valid', expiryDate: '2025-01-01', fileUrl: '#' }
+    ],
+    contracts: [
+        { id: 'co1', title: 'Main Project Contract', startDate: '2023-01-01', endDate: '2024-01-01', status: 'Active', fileUrl: '#' }
+    ]
   },
   {
     id: 'p2',
     name: 'Synergy Solutions',
     logoUrl: 'https://placehold.co/100x100.png',
-    category: 'Consulting',
+    category: 'Supplier',
     status: 'Active',
     overview: 'Global consulting firm focusing on digital transformation and business process optimization. Their expertise helps streamline our joint ventures.',
     website: 'synergysolutions.com',
@@ -35,12 +44,15 @@ export const partners: Partner[] = [
     transactions: [
       { id: 't4', date: '2023-11-20', amount: 120000, status: 'Completed', description: 'Strategy Workshop' },
     ],
+    performanceReviews: [],
+    complianceDocuments: [],
+    contracts: []
   },
   {
     id: 'p3',
     name: 'Quantum Resellers',
     logoUrl: 'https://placehold.co/100x100.png',
-    category: 'Reseller',
+    category: 'Equipment',
     status: 'Inactive',
     overview: 'A value-added reseller with a wide distribution network across North America. Currently inactive pending contract renewal.',
     website: 'quantumresellers.com',
@@ -51,6 +63,9 @@ export const partners: Partner[] = [
     transactions: [
       { id: 't5', date: '2023-01-15', amount: 85000, status: 'Completed', description: 'Hardware Distribution' },
     ],
+    performanceReviews: [],
+    complianceDocuments: [],
+    contracts: []
   },
   {
     id: 'p4',
@@ -65,6 +80,9 @@ export const partners: Partner[] = [
       { id: 'c5', name: 'Ethan Harris', role: 'Operations Head', email: 'ethan.h@nextgen.net', phone: '456-789-0123' },
     ],
     transactions: [],
+    performanceReviews: [],
+    complianceDocuments: [],
+    contracts: []
   },
 ];
 

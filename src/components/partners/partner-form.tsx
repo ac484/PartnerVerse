@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 const partnerSchema = z.object({
   name: z.string().min(2, { message: 'Partner name must be at least 2 characters.' }),
   website: z.string().url({ message: 'Please enter a valid URL.' }),
-  category: z.enum(['Technology', 'Reseller', 'Service', 'Consulting']),
+  category: z.enum(['Technology', 'Reseller', 'Service', 'Consulting', 'Subcontractor', 'Supplier', 'Equipment']),
   status: z.enum(['Active', 'Inactive', 'Pending']),
   overview: z.string().min(10, { message: 'Overview must be at least 10 characters.' }),
   joinDate: z.string().optional(),
@@ -37,7 +37,7 @@ export const PartnerForm: FC<PartnerFormProps> = ({ isOpen, onOpenChange, onSave
     defaultValues: {
       name: '',
       website: '',
-      category: 'Technology',
+      category: 'Subcontractor',
       status: 'Pending',
       overview: '',
     },
@@ -50,7 +50,7 @@ export const PartnerForm: FC<PartnerFormProps> = ({ isOpen, onOpenChange, onSave
       form.reset({
         name: '',
         website: 'https://',
-        category: 'Technology',
+        category: 'Subcontractor',
         status: 'Pending',
         overview: '',
       });
@@ -59,7 +59,7 @@ export const PartnerForm: FC<PartnerFormProps> = ({ isOpen, onOpenChange, onSave
 
   const onSubmit = (data: PartnerFormValues) => {
     const partnerData: Partner = {
-      ...(partner || { id: '', logoUrl: 'https://placehold.co/100x100.png', contacts: [], transactions: [] }),
+      ...(partner || { id: '', logoUrl: 'https://placehold.co/100x100.png', contacts: [], transactions: [], performanceReviews: [], complianceDocuments: [], contracts: [] }),
       ...data,
       joinDate: partner?.joinDate || new Date().toISOString().split('T')[0],
     };
@@ -109,10 +109,13 @@ export const PartnerForm: FC<PartnerFormProps> = ({ isOpen, onOpenChange, onSave
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
                       <SelectContent>
+                        <SelectItem value="Subcontractor">Subcontractor</SelectItem>
+                        <SelectItem value="Supplier">Supplier</SelectItem>
+                        <SelectItem value="Equipment">Equipment</SelectItem>
+                        <SelectItem value="Consulting">Consulting</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
                         <SelectItem value="Technology">Technology</SelectItem>
                         <SelectItem value="Reseller">Reseller</SelectItem>
-                        <SelectItem value="Service">Service</SelectItem>
-                        <SelectItem value="Consulting">Consulting</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
