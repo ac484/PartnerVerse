@@ -40,7 +40,7 @@ export interface Contract {
 }
 
 export interface Partner {
-  id: string;
+  id?: string;
   name: string;
   logoUrl: string;
   category: 'Technology' | 'Reseller' | 'Service' | 'Consulting' | 'Subcontractor' | 'Supplier' | 'Equipment';
