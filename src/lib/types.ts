@@ -70,7 +70,7 @@ export type WorkflowEdge = {
 };
 
 export type Workflow = {
-  id: string;
+  id?: string;
   name: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
